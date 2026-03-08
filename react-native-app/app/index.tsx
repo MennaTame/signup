@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import {View,Text,TextInput,TouchableOpacity,StyleSheet,Alert,} from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from "react-native";
+import axios from "axios";
 
 export default function App() {
   const [email, setEmail] = useState("");
@@ -8,6 +16,10 @@ export default function App() {
 
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+
+  const [apiData, setApiData] = useState<any>(null);
+  const [apiError, setApiError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const validateEmail = (value: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -25,18 +37,32 @@ export default function App() {
       valid = false;
     }
 
-    if (password !== repeatPassword) {
+    if (!password || !repeatPassword) {
+      setPasswordError("Please fill in both password fields");
+      valid = false;
+    } else if (password !== repeatPassword) {
       setPasswordError("Passwords do not match");
       valid = false;
     }
 
-    if (!password || !repeatPassword) {
-      setPasswordError("Please enter both password fields");
-      valid = false;
-    }
-
     if (valid) {
-      Alert.alert("Success", "Sign up completed successfully");
+      Alert.alert("Success", "Validation passed");
+    }
+  };
+
+  const fetchGitHubUser = async () => {
+    try {
+      setLoading(true);
+      setApiError("");
+      setApiData(null);
+
+      const response = await axios.get("https://api.github.com/users/1");
+
+      setApiData(response.data);
+    } catch (error: any) {
+      setApiError(error?.response?.data?.message || "Request failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -54,7 +80,7 @@ export default function App() {
           onChangeText={setEmail}
           style={styles.input}
         />
-        {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
+        {!!emailError && <Text style={styles.errorText}>{emailError}</Text>}
 
         <TextInput
           placeholder="password"
@@ -73,13 +99,29 @@ export default function App() {
           onChangeText={setRepeatPassword}
           style={styles.input}
         />
-        {passwordError ? (
+        {!!passwordError && (
           <Text style={styles.errorText}>{passwordError}</Text>
-        ) : null}
+        )}
 
         <TouchableOpacity style={styles.button} onPress={handleSignUp}>
           <Text style={styles.buttonText}>Sign up</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.apiButton} onPress={fetchGitHubUser}>
+          <Text style={styles.apiButtonText}>Fetch GitHub User</Text>
+        </TouchableOpacity>
+
+        {loading && <Text style={styles.infoText}>Loading...</Text>}
+
+        {!!apiError && <Text style={styles.errorText}>{apiError}</Text>}
+
+        {apiData && (
+          <View style={styles.resultBox}>
+            <Text style={styles.resultText}>Login: {apiData.login}</Text>
+            <Text style={styles.resultText}>Name: {apiData.name}</Text>
+            <Text style={styles.resultText}>URL: {apiData.html_url}</Text>
+          </View>
+        )}
 
         <Text style={styles.footerText}>Read User License Agreement</Text>
       </View>
@@ -129,6 +171,38 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
 
+  button: {
+    width: "100%",
+    height: 58,
+    borderRadius: 30,
+    marginTop: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#1FC7D7",
+  },
+
+  buttonText: {
+    color: "white",
+    fontSize: 24,
+    fontWeight: "600",
+  },
+
+  apiButton: {
+    width: "100%",
+    height: 52,
+    borderRadius: 26,
+    marginTop: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#2D7FF9",
+  },
+
+  apiButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+
   errorText: {
     width: "100%",
     color: "red",
@@ -138,20 +212,24 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
 
-  button: {
-    width: "100%",
-    height: 58,
-    borderRadius: 30,
-    marginTop: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#1FC7D7",
+  infoText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#444",
   },
 
-  buttonText: {
-    color: "white",
-    fontSize: 28,
-    fontWeight: "500",
+  resultBox: {
+    width: "100%",
+    backgroundColor: "#fff",
+    marginTop: 16,
+    borderRadius: 16,
+    padding: 14,
+  },
+
+  resultText: {
+    fontSize: 15,
+    color: "#333",
+    marginBottom: 6,
   },
 
   footerText: {
