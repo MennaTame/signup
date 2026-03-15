@@ -1,241 +1,215 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
+View,
+Text,
+TextInput,
+Button,
+FlatList,
+TouchableOpacity,
+StyleSheet
 } from "react-native";
+
+import { Provider, useDispatch, useSelector } from "react-redux";
+import { store } from "../redux/store";
+import { addTask, deleteTask, toggleTask } from "../redux/taskSlice";
+
 import axios from "axios";
 
-export default function App() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [repeatPassword, setRepeatPassword] = useState("");
+function AppScreen() {
 
-  const [emailError, setEmailError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
+const [email,setEmail] = useState("");
+const [password,setPassword] = useState("");
+const [repeatPassword,setRepeatPassword] = useState("");
 
-  const [apiData, setApiData] = useState<any>(null);
-  const [apiError, setApiError] = useState("");
-  const [loading, setLoading] = useState(false);
+const [loggedIn,setLoggedIn] = useState(false);
 
-  const validateEmail = (value: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(value);
-  };
+const [taskText,setTaskText] = useState("");
 
-  const handleSignUp = () => {
-    let valid = true;
+const tasks = useSelector(state => state.tasks);
 
-    setEmailError("");
-    setPasswordError("");
+const dispatch = useDispatch();
 
-    if (!validateEmail(email)) {
-      setEmailError("Please enter a valid email address");
-      valid = false;
-    }
+const validateEmail = (email) =>{
+const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+return regex.test(email);
+};
 
-    if (!password || !repeatPassword) {
-      setPasswordError("Please fill in both password fields");
-      valid = false;
-    } else if (password !== repeatPassword) {
-      setPasswordError("Passwords do not match");
-      valid = false;
-    }
+const handleSignup = () =>{
 
-    if (valid) {
-      Alert.alert("Success", "Validation passed");
-    }
-  };
+if(!validateEmail(email)){
+alert("Invalid email");
+return;
+}
 
-  const fetchGitHubUser = async () => {
-    try {
-      setLoading(true);
-      setApiError("");
-      setApiData(null);
+if(password !== repeatPassword){
+alert("Passwords do not match");
+return;
+}
 
-      const response = await axios.get("https://api.github.com/users/1");
+setLoggedIn(true);
+};
 
-      setApiData(response.data);
-    } catch (error: any) {
-      setApiError(error?.response?.data?.message || "Request failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+const addNewTask = ()=>{
+if(!taskText) return;
 
-  return (
-    <View style={styles.screen}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Sign Up</Text>
+dispatch(addTask({
+id: Date.now().toString(),
+text: taskText,
+completed:false
+}));
 
-        <TextInput
-          placeholder="email"
-          placeholderTextColor="#8D95A6"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-          style={styles.input}
-        />
-        {!!emailError && <Text style={styles.errorText}>{emailError}</Text>}
+setTaskText("");
+};
 
-        <TextInput
-          placeholder="password"
-          placeholderTextColor="#8D95A6"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          style={styles.input}
-        />
+const fetchUser = async ()=>{
 
-        <TextInput
-          placeholder="repeat password"
-          placeholderTextColor="#8D95A6"
-          secureTextEntry
-          value={repeatPassword}
-          onChangeText={setRepeatPassword}
-          style={styles.input}
-        />
-        {!!passwordError && (
-          <Text style={styles.errorText}>{passwordError}</Text>
-        )}
+try{
 
-        <TouchableOpacity style={styles.button} onPress={handleSignUp}>
-          <Text style={styles.buttonText}>Sign up</Text>
-        </TouchableOpacity>
+const res = await axios.get("https://api.github.com/users/octocat");
 
-        <TouchableOpacity style={styles.apiButton} onPress={fetchGitHubUser}>
-          <Text style={styles.apiButtonText}>Fetch GitHub User</Text>
-        </TouchableOpacity>
+alert("API Connected: " + res.data.login);
 
-        {loading && <Text style={styles.infoText}>Loading...</Text>}
+}catch(err){
 
-        {!!apiError && <Text style={styles.errorText}>{apiError}</Text>}
+alert("API Error");
 
-        {apiData && (
-          <View style={styles.resultBox}>
-            <Text style={styles.resultText}>Login: {apiData.login}</Text>
-            <Text style={styles.resultText}>Name: {apiData.name}</Text>
-            <Text style={styles.resultText}>URL: {apiData.html_url}</Text>
-          </View>
-        )}
+}
 
-        <Text style={styles.footerText}>Read User License Agreement</Text>
-      </View>
-    </View>
-  );
+};
+
+if(!loggedIn){
+
+return(
+
+<View style={styles.container}>
+
+<Text style={styles.title}>Sign Up</Text>
+
+<TextInput
+placeholder="Email"
+value={email}
+onChangeText={setEmail}
+style={styles.input}
+/>
+
+<TextInput
+placeholder="Password"
+secureTextEntry
+value={password}
+onChangeText={setPassword}
+style={styles.input}
+/>
+
+<TextInput
+placeholder="Repeat Password"
+secureTextEntry
+value={repeatPassword}
+onChangeText={setRepeatPassword}
+style={styles.input}
+/>
+
+<Button title="Sign Up" onPress={handleSignup}/>
+
+</View>
+
+);
+
+}
+
+return(
+
+<View style={styles.container}>
+
+<Text style={styles.title}>Todo List</Text>
+
+<TextInput
+placeholder="Add task"
+value={taskText}
+onChangeText={setTaskText}
+style={styles.input}
+/>
+
+<Button title="Add Task" onPress={addNewTask}/>
+
+<Button title="Test API" onPress={fetchUser}/>
+
+<FlatList
+data={tasks}
+keyExtractor={(item)=>item.id}
+renderItem={({item})=>(
+<View style={styles.taskRow}>
+
+<TouchableOpacity
+onPress={()=>dispatch(toggleTask(item.id))}
+>
+
+<Text style={{
+textDecorationLine:item.completed ? "line-through":"none",
+fontSize:18
+}}>
+
+{item.text}
+
+</Text>
+
+</TouchableOpacity>
+
+<Button
+title="Delete"
+onPress={()=>dispatch(deleteTask(item.id))}
+/>
+
+</View>
+)}
+/>
+
+</View>
+
+);
+
+}
+
+export default function App(){
+
+return(
+
+<Provider store={store}>
+
+<AppScreen/>
+
+</Provider>
+
+);
+
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#16B9D8",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
 
-  card: {
-    width: "92%",
-    minHeight: "95%",
-    backgroundColor: "#F7F8FC",
-    borderRadius: 35,
-    alignItems: "center",
-    paddingTop: 50,
-    paddingHorizontal: 24,
-  },
+container:{
+flex:1,
+padding:20,
+justifyContent:"center"
+},
 
-  title: {
-    fontSize: 34,
-    fontWeight: "800",
-    color: "#1FC7D7",
-    marginBottom: 45,
-  },
+title:{
+fontSize:28,
+marginBottom:20,
+textAlign:"center"
+},
 
-  input: {
-    width: "100%",
-    height: 56,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 28,
-    paddingHorizontal: 22,
-    fontSize: 18,
-    color: "#444",
-    marginBottom: 18,
-    shadowColor: "#9FE8F1",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
-  },
+input:{
+borderWidth:1,
+borderColor:"#ccc",
+padding:10,
+marginBottom:10,
+borderRadius:6
+},
 
-  button: {
-    width: "100%",
-    height: 58,
-    borderRadius: 30,
-    marginTop: 30,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#1FC7D7",
-  },
+taskRow:{
+flexDirection:"row",
+justifyContent:"space-between",
+alignItems:"center",
+marginTop:10
+}
 
-  buttonText: {
-    color: "white",
-    fontSize: 24,
-    fontWeight: "600",
-  },
-
-  apiButton: {
-    width: "100%",
-    height: 52,
-    borderRadius: 26,
-    marginTop: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#2D7FF9",
-  },
-
-  apiButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-
-  errorText: {
-    width: "100%",
-    color: "red",
-    fontSize: 13,
-    marginTop: -10,
-    marginBottom: 12,
-    paddingLeft: 8,
-  },
-
-  infoText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: "#444",
-  },
-
-  resultBox: {
-    width: "100%",
-    backgroundColor: "#fff",
-    marginTop: 16,
-    borderRadius: 16,
-    padding: 14,
-  },
-
-  resultText: {
-    fontSize: 15,
-    color: "#333",
-    marginBottom: 6,
-  },
-
-  footerText: {
-    marginTop: 20,
-    color: "#2AAFC2",
-    fontSize: 14,
-    fontWeight: "500",
-  },
 });
